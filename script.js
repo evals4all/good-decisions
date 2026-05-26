@@ -118,6 +118,11 @@ const targets = {
   deficitHigh: 1000
 };
 
+const calorieDefaults = {
+  baselineBurn: 1860,
+  legacyBaselineBurn: 2100
+};
+
 const exerciseBurnRates = {
   Bike: { easy: 6, moderate: 8, hard: 11 },
   Strength: { easy: 4, moderate: 6, hard: 8 },
@@ -599,6 +604,12 @@ function latestValue(entries, key) {
   return null;
 }
 
+function migrateBaselineBurn(value) {
+  const burn = Number(value);
+  if (burn === calorieDefaults.legacyBaselineBurn) return calorieDefaults.baselineBurn;
+  return Number.isFinite(burn) && burn > 0 ? burn : value;
+}
+
 function collectCurrentDay() {
   const nutrition = estimateNutrition(el("foodEntry").value).totals;
   const caloriePlan = getCaloriePlan(nutrition);
@@ -933,8 +944,10 @@ function nutritionForEntry(entry) {
 
 function deficitForEntry(entry, nutrition) {
   const caloriePlan = entry.caloriePlan || {};
-  if (Number.isFinite(caloriePlan.totalBurn) && Number.isFinite(nutrition.calories) && nutrition.calories > 0) {
-    return caloriePlan.totalBurn - nutrition.calories;
+  const baselineBurn = migrateBaselineBurn(entry.baselineBurn || caloriePlan.baselineBurn);
+  const exerciseCalories = Number.isFinite(caloriePlan.exerciseCalories) ? caloriePlan.exerciseCalories : 0;
+  if (Number.isFinite(baselineBurn) && Number.isFinite(nutrition.calories) && nutrition.calories > 0) {
+    return baselineBurn + exerciseCalories - nutrition.calories;
   }
   return caloriePlan.deficit;
 }
@@ -1108,7 +1121,7 @@ function applyEntry(entry) {
     "eveningPrompt"
   ];
   fields.forEach((key) => {
-    if (entry[key] !== undefined && el(key)) el(key).value = entry[key];
+    if (entry[key] !== undefined && el(key)) el(key).value = key === "baselineBurn" ? migrateBaselineBurn(entry[key]) : entry[key];
   });
 
   if (entry.date) el("logDate").value = entry.date;
@@ -1117,7 +1130,7 @@ function applyEntry(entry) {
   if (entry.weight !== undefined && entry.weight !== null) el("currentWeight").value = entry.weight;
   if (entry.startWeight !== undefined && entry.startWeight !== null) el("startWeight").value = entry.startWeight;
   if (entry.goalLoss !== undefined) el("goalLoss").value = entry.goalLoss;
-  if (entry.baselineBurn !== undefined) el("baselineBurn").value = entry.baselineBurn;
+  if (entry.baselineBurn !== undefined) el("baselineBurn").value = migrateBaselineBurn(entry.baselineBurn);
   if (entry.weeklyLossGoal !== undefined) el("weeklyLossGoal").value = entry.weeklyLossGoal;
   if (entry.slackEnabled !== undefined) el("slackEnabled").checked = Boolean(entry.slackEnabled);
 }
@@ -1134,7 +1147,7 @@ function carryForwardCalorieSettings(force = false) {
   const history = getHistory();
   const burn = latestNumber(history, "baselineBurn");
   const pace = latestNumber(history, "weeklyLossGoal");
-  if (burn && (force || !el("baselineBurn").value)) el("baselineBurn").value = burn;
+  if (burn && (force || !el("baselineBurn").value)) el("baselineBurn").value = migrateBaselineBurn(burn);
   if (pace && (force || !el("weeklyLossGoal").value)) el("weeklyLossGoal").value = pace;
 }
 
@@ -1179,7 +1192,7 @@ function resetEntryFields(keepDate = true) {
   el("exerciseDistance").value = "";
   el("exerciseIntensity").value = "Easy";
   el("currentWeight").value = "";
-  el("baselineBurn").value = "2100";
+  el("baselineBurn").value = String(calorieDefaults.baselineBurn);
   el("weeklyLossGoal").value = "1.5";
   if (keepDate) el("logDate").value = date;
 }
