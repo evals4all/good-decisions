@@ -23,6 +23,7 @@
           <a href="#food">Food</a>
           <a href="#movement">Movement</a>
           <a href="#progress">Progress</a>
+          <a href="#history">History</a>
           <a href="#insights">Insights</a>
         </nav>
 
@@ -231,6 +232,21 @@
 
             <div class="trend-chart" id="trendChart" aria-label="Daily foundation score chart"></div>
             <div class="trend-list" id="trendList" aria-live="polite"></div>
+          </article>
+
+          <article class="panel history-panel" id="history">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">History</p>
+                <h2>Look back by saved day</h2>
+              </div>
+              <span class="status-pill muted" id="historyCount">No days yet</span>
+            </div>
+
+            <div class="history-layout">
+              <div class="history-days" id="historyDays" aria-label="Saved days"></div>
+              <div class="history-detail" id="historyDetail" aria-live="polite"></div>
+            </div>
           </article>
         </section>
 

@@ -137,6 +137,10 @@ const trendState = {
   view: "weekly"
 };
 
+const historyState = {
+  selectedDate: ""
+};
+
 const el = (id) => document.getElementById(id);
 
 function todayISO() {
@@ -439,6 +443,15 @@ function formatCalories(value) {
   return `${Math.round(value).toLocaleString()} kcal`;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function updateNutrition() {
   const { totals, matched } = estimateNutrition(el("foodEntry").value);
   const calorieTarget = Number(el("baselineBurn").value || targets.calories);
@@ -689,9 +702,10 @@ function average(values) {
 }
 
 function dailyScore(entry) {
-  if (!entry.sleepMinutes && !entry.nutrition && !entry.exerciseMinutes) return 0;
+  const nutrition = nutritionForEntry(entry);
+  if (!entry.sleepMinutes && !nutrition.calories && !entry.exerciseMinutes) return 0;
   const sleepScore = Math.min((entry.sleepMinutes || 0) / targets.sleepMinutes, 1);
-  const fiberScore = Math.min(((entry.nutrition && entry.nutrition.fiber) || 0) / targets.fiber, 1);
+  const fiberScore = Math.min((nutrition.fiber || 0) / targets.fiber, 1);
   const movementScore = Math.min((entry.exerciseMinutes || 0) / targets.movementMinutes, 1);
   return Math.round(((sleepScore + fiberScore + movementScore) / 3) * 100);
 }
@@ -853,9 +867,9 @@ function renderTrends() {
   const savedRangeEntries = rangeEntries.filter(hasEntrySignal);
 
   const avgSleep = average(sevenDayEntries.map((entry) => entry.sleepMinutes));
-  const avgCalories = average(sevenDayEntries.map((entry) => entry.nutrition && entry.nutrition.calories));
-  const avgDeficit = average(sevenDayEntries.map((entry) => entry.caloriePlan && entry.caloriePlan.deficit));
-  const avgFiber = average(sevenDayEntries.map((entry) => entry.nutrition && entry.nutrition.fiber));
+  const avgCalories = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).calories));
+  const avgDeficit = average(sevenDayEntries.map((entry) => deficitForEntry(entry, nutritionForEntry(entry))));
+  const avgFiber = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).fiber));
   const avgMovement = average(sevenDayEntries.map((entry) => entry.exerciseMinutes));
 
   el("avgSleep7").textContent = avgSleep ? formatDuration(avgSleep) : "--";
@@ -890,12 +904,11 @@ function renderTrends() {
     .slice(-6)
     .reverse()
     .map((entry) => {
-      const fiber = entry.nutrition && Number.isFinite(entry.nutrition.fiber) ? `${entry.nutrition.fiber}g fiber` : "fiber --";
-      const calories = entry.nutrition && Number.isFinite(entry.nutrition.calories) ? `${entry.nutrition.calories} cal` : "cal --";
-      const deficit =
-        entry.caloriePlan && Number.isFinite(entry.caloriePlan.deficit)
-          ? `${Math.round(entry.caloriePlan.deficit)} def`
-          : "def --";
+      const nutrition = nutritionForEntry(entry);
+      const deficit = deficitForEntry(entry, nutrition);
+      const fiber = Number.isFinite(nutrition.fiber) ? `${nutrition.fiber}g fiber` : "fiber --";
+      const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories} cal` : "cal --";
+      const deficitLabel = Number.isFinite(deficit) ? `${Math.round(deficit)} def` : "def --";
       const movement = Number.isFinite(entry.exerciseMinutes) ? `${entry.exerciseMinutes}m move` : "move --";
       const sleep = entry.sleepMinutes ? formatDuration(entry.sleepMinutes) : "sleep --";
       const weight = entry.weight ? formatWeight(entry.weight) : "weight --";
@@ -904,7 +917,7 @@ function renderTrends() {
           <strong>${dateLabel(entry.date)}</strong>
           <span>${sleep}</span>
           <span>${calories}</span>
-          <span>${deficit}</span>
+          <span>${deficitLabel}</span>
           <span>${fiber}</span>
           <span>${movement}</span>
           <span>${weight}</span>
@@ -912,6 +925,136 @@ function renderTrends() {
       `;
     })
     .join("");
+}
+
+function nutritionForEntry(entry) {
+  return entry.foodEntry ? estimateNutrition(entry.foodEntry).totals : entry.nutrition || {};
+}
+
+function deficitForEntry(entry, nutrition) {
+  const caloriePlan = entry.caloriePlan || {};
+  if (Number.isFinite(caloriePlan.totalBurn) && Number.isFinite(nutrition.calories) && nutrition.calories > 0) {
+    return caloriePlan.totalBurn - nutrition.calories;
+  }
+  return caloriePlan.deficit;
+}
+
+function renderHistoryLookback() {
+  const savedEntries = getHistory().filter(hasEntrySignal);
+  const latestFirst = [...savedEntries].reverse();
+  const currentLogDate = el("logDate").value;
+  const selectedEntry =
+    savedEntries.find((entry) => entry.date === historyState.selectedDate) ||
+    savedEntries.find((entry) => entry.date === currentLogDate) ||
+    latestFirst[0];
+
+  el("historyCount").textContent = savedEntries.length
+    ? `${savedEntries.length} saved day${savedEntries.length === 1 ? "" : "s"}`
+    : "No days yet";
+
+  if (!selectedEntry) {
+    el("historyDays").innerHTML = "";
+    el("historyDetail").innerHTML =
+      '<p class="empty-trend">Save today and it will appear here with the full food note, sleep record, movement, weight, and calorie estimate.</p>';
+    return;
+  }
+
+  historyState.selectedDate = selectedEntry.date;
+  el("historyDays").innerHTML = latestFirst
+    .slice(0, 14)
+    .map((entry) => {
+      const nutrition = nutritionForEntry(entry);
+      const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories.toLocaleString()} cal` : "cal --";
+      const sleep = entry.sleepMinutes ? formatDuration(entry.sleepMinutes) : "sleep --";
+      const movement = Number.isFinite(entry.exerciseMinutes) && entry.exerciseMinutes > 0 ? `${entry.exerciseMinutes}m move` : "move --";
+      return `
+        <button class="history-day ${entry.date === selectedEntry.date ? "is-active" : ""}" type="button" data-history-date="${entry.date}">
+          <strong>${dateLabel(entry.date, { weekday: "short", month: "short", day: "numeric" })}</strong>
+          <span>${calories} · ${sleep} · ${movement}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  const nutrition = nutritionForEntry(selectedEntry);
+  const deficit = deficitForEntry(selectedEntry, nutrition);
+  const matched = selectedEntry.foodEntry ? estimateNutrition(selectedEntry.foodEntry).matched : [];
+  const matchedHtml = matched.length
+    ? matched
+        .map((item) => {
+          const servings = item.servings === 1 ? "" : ` x${formatNumber(item.servings, "", 1)}`;
+          return `<span>${escapeHtml(item.label)}${servings} · ${Math.round(item.calories)} cal</span>`;
+        })
+        .join("")
+    : "<span>No foods matched</span>";
+  const foodText = selectedEntry.foodEntry ? escapeHtml(selectedEntry.foodEntry) : "No food logged.";
+  const wakeups = Number.isFinite(selectedEntry.wakeups) ? selectedEntry.wakeups : 0;
+  const sleepText = selectedEntry.sleepMinutes
+    ? `${escapeHtml(selectedEntry.bedtime || "--")} to ${escapeHtml(selectedEntry.waketime || "--")} · ${formatDuration(selectedEntry.sleepMinutes)} · ${wakeups} wakeup${wakeups === 1 ? "" : "s"}`
+    : "No sleep logged.";
+  const movementText =
+    Number.isFinite(selectedEntry.exerciseMinutes) && selectedEntry.exerciseMinutes > 0
+      ? `${selectedEntry.exerciseMinutes} min ${escapeHtml(String(selectedEntry.exerciseIntensity || "easy").toLowerCase())} ${escapeHtml(String(selectedEntry.exerciseType || "movement").toLowerCase())}${selectedEntry.exerciseDistance ? ` · ${escapeHtml(selectedEntry.exerciseDistance)}` : ""}`
+      : "No movement logged.";
+
+  el("historyDetail").innerHTML = `
+    <div class="history-detail-head">
+      <div>
+        <p class="eyebrow">Selected day</p>
+        <h3>${dateLabel(selectedEntry.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</h3>
+      </div>
+      <button class="secondary-button history-load" type="button" data-history-date="${selectedEntry.date}">Load day</button>
+    </div>
+
+    <div class="history-summary-grid">
+      <article>
+        <span>Calories</span>
+        <strong>${Number.isFinite(nutrition.calories) ? nutrition.calories.toLocaleString() : "--"}</strong>
+      </article>
+      <article>
+        <span>Deficit</span>
+        <strong>${Number.isFinite(deficit) ? formatCalories(deficit).replace(" kcal", "") : "--"}</strong>
+      </article>
+      <article>
+        <span>Protein</span>
+        <strong>${Number.isFinite(nutrition.protein) ? `${nutrition.protein}g` : "--"}</strong>
+      </article>
+      <article>
+        <span>Fiber</span>
+        <strong>${Number.isFinite(nutrition.fiber) ? `${nutrition.fiber}g` : "--"}</strong>
+      </article>
+      <article>
+        <span>Sleep</span>
+        <strong>${selectedEntry.sleepMinutes ? formatDuration(selectedEntry.sleepMinutes) : "--"}</strong>
+      </article>
+      <article>
+        <span>Weight</span>
+        <strong>${selectedEntry.weight ? formatWeight(selectedEntry.weight) : "--"}</strong>
+      </article>
+    </div>
+
+    <div class="history-notes">
+      <article>
+        <h4>Food</h4>
+        <p>${foodText}</p>
+        <div class="matched-foods history-matched">${matchedHtml}</div>
+      </article>
+      <article>
+        <h4>Sleep</h4>
+        <p>${sleepText}</p>
+        ${selectedEntry.sleepNote ? `<p>${escapeHtml(selectedEntry.sleepNote)}</p>` : ""}
+      </article>
+      <article>
+        <h4>Movement</h4>
+        <p>${movementText}</p>
+      </article>
+      ${
+        selectedEntry.quickEntry
+          ? `<article><h4>Original update</h4><p>${escapeHtml(selectedEntry.quickEntry)}</p></article>`
+          : ""
+      }
+    </div>
+  `;
 }
 
 function showToast(message) {
@@ -932,6 +1075,7 @@ function saveDay() {
   if (getCompletionStatus(payload).complete) {
     payload.completionQuote = completionQuoteForDate(payload.date);
   }
+  historyState.selectedDate = payload.date;
   localStorage.setItem(storageKeys.today, JSON.stringify(payload));
   upsertHistoryEntry(payload);
   refreshAll();
@@ -1050,6 +1194,7 @@ function clearDay() {
 function loadSelectedDate() {
   const selectedDate = el("logDate").value;
   const entry = getHistory().find((item) => item.date === selectedDate);
+  historyState.selectedDate = selectedDate;
   resetEntryFields(true);
   if (entry) {
     applyEntry(entry);
@@ -1187,6 +1332,7 @@ function refreshAll() {
   updateMovement();
   updateSlackPreview();
   renderTrends();
+  renderHistoryLookback();
   renderCompletion();
   renderStreaks();
 }
@@ -1215,6 +1361,19 @@ el("estimateFoodButton").addEventListener("click", () => {
   showToast("Updated rough nutrition estimate.");
 });
 el("foodEntry").addEventListener("input", refreshAll);
+el("historyDays").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-history-date]");
+  if (!button) return;
+  historyState.selectedDate = button.dataset.historyDate;
+  renderHistoryLookback();
+});
+el("historyDetail").addEventListener("click", (event) => {
+  const button = event.target.closest(".history-load");
+  if (!button) return;
+  el("logDate").value = button.dataset.historyDate;
+  loadSelectedDate();
+  location.hash = "#today";
+});
 el("parseButton").addEventListener("click", parseQuickEntry);
 el("saveDayButton").addEventListener("click", saveDay);
 el("clearDayButton").addEventListener("click", clearDay);
