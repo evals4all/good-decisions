@@ -1,4 +1,45 @@
 const foodDb = [
+  {
+    keys: ["fairlife fat free milk", "fairlife fat-free milk", "fairlife milk", "ultra filtered milk"],
+    label: "Fairlife fat-free milk",
+    calories: 80,
+    protein: 13,
+    carbs: 6,
+    fat: 0,
+    fiber: 0,
+    calcium: 380,
+    unitServings: { oz: 0.125, cup: 1, glass: 1 }
+  },
+  { keys: ["carb balance tortilla", "carb-balance tortilla", "mission carb balance tortilla"], label: "Carb Balance tortilla", calories: 70, protein: 5, carbs: 19, fat: 3, fiber: 15, calcium: 60 },
+  { keys: ["skinless chicken breast", "chicken breast"], label: "Chicken breast", calories: 120, protein: 26, carbs: 0, fat: 3, fiber: 0, calcium: 10 },
+  { keys: ["grilled chicken thigh", "skinless chicken thigh", "chicken thigh"], label: "Skinless chicken thigh", calories: 180, protein: 22, carbs: 0, fat: 10, fiber: 0, calcium: 15 },
+  { keys: ["pancakes", "pancake"], label: "Pancake", calories: 90, protein: 2, carbs: 15, fat: 3, fiber: 1, calcium: 60 },
+  { keys: ["custard sauce", "custard"], label: "Custard sauce", calories: 120, protein: 3, carbs: 18, fat: 5, fiber: 0, calcium: 100 },
+  { keys: ["croissant", "criossant"], label: "Croissant", calories: 230, protein: 5, carbs: 26, fat: 12, fiber: 2, calcium: 25 },
+  {
+    keys: ["orange juice", "oj"],
+    label: "Orange juice",
+    calories: 110,
+    protein: 2,
+    carbs: 26,
+    fat: 0,
+    fiber: 0,
+    calcium: 25,
+    unitServings: { oz: 0.125, cup: 1, glass: 1 }
+  },
+  {
+    keys: ["champagne"],
+    label: "Champagne",
+    calories: 95,
+    protein: 0,
+    carbs: 2,
+    fat: 0,
+    fiber: 0,
+    calcium: 10,
+    unitServings: { oz: 0.2, glass: 1 }
+  },
+  { keys: ["enchilada", "enchiladas"], label: "Enchilada sauce and cheese", calories: 120, protein: 5, carbs: 8, fat: 6, fiber: 1, calcium: 120 },
+  { keys: ["monk fruit sweetener", "monk fruit"], label: "Monk fruit sweetener", calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, calcium: 0 },
   { keys: ["greek yogurt", "yogurt"], label: "Greek yogurt", calories: 150, protein: 23, carbs: 9, fat: 4, fiber: 0, calcium: 240 },
   { keys: ["oatmeal", "oats"], label: "Oatmeal", calories: 150, protein: 6, carbs: 27, fat: 3, fiber: 4, calcium: 20 },
   { keys: ["berries", "blueberries", "strawberries"], label: "Berries", calories: 70, protein: 1, carbs: 17, fat: 0, fiber: 4, calcium: 25 },
@@ -228,51 +269,139 @@ function calculateSleep() {
   el("sleepInsight").textContent = `${wakeText} Protect the last hour before bed tonight.`;
 }
 
-function servingsForFood(text, food) {
-  const lower = text.toLowerCase();
-  const matchedKey = food.keys.find((key) => lower.includes(key));
-  if (!matchedKey) return 0;
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-  const escaped = matchedKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const patterns = [
-    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:cups?|servings?|bowls?|pieces?|slices?|eggs?|oz)?\\s+${escaped}`),
-    new RegExp(`(half|one|two|three|four)\\s+(?:cups?|servings?|bowls?|pieces?|slices?|eggs?|oz)?\\s*${escaped}`),
-    new RegExp(`${escaped}\\s*(?:x|of)?\\s*(\\d+(?:\\.\\d+)?)`)
-  ];
+function rangesOverlap(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
 
-  for (const pattern of patterns) {
-    const match = lower.match(pattern);
-    if (match) {
-      const raw = match[1];
-      const wordMap = { half: 0.5, one: 1, two: 2, three: 3, four: 4 };
-      return Number(wordMap[raw] || raw) || 1;
-    }
+function parseQuantity(raw) {
+  if (!raw) return 1;
+  const normalized = raw.toLowerCase();
+  const wordMap = {
+    a: 1,
+    an: 1,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    half: 0.5,
+    some: 1,
+    few: 2
+  };
+
+  if (wordMap[normalized]) return wordMap[normalized];
+  if (normalized.includes("/")) {
+    const [top, bottom] = normalized.split("/").map(Number);
+    return bottom ? top / bottom : 1;
   }
 
-  if (lower.includes(`1/2 cup ${matchedKey}`) || lower.includes(`1/2 ${matchedKey}`)) return 0.5;
-  if (lower.includes(`half cup ${matchedKey}`) || lower.includes(`half ${matchedKey}`)) return 0.5;
-  return 1;
+  return Number(normalized) || 1;
+}
+
+function normalizeUnit(raw) {
+  if (!raw) return "";
+  const normalized = raw.toLowerCase();
+  const unitMap = {
+    ounce: "oz",
+    ounces: "oz",
+    oz: "oz",
+    cup: "cup",
+    cups: "cup",
+    glass: "glass",
+    glasses: "glass",
+    serving: "serving",
+    servings: "serving",
+    bowl: "bowl",
+    bowls: "bowl",
+    piece: "piece",
+    pieces: "piece",
+    slice: "slice",
+    slices: "slice",
+    egg: "piece",
+    eggs: "piece"
+  };
+  return unitMap[normalized] || "";
+}
+
+function servingsNearMatch(text, matchStart, matchEnd, food) {
+  const before = text.slice(Math.max(0, matchStart - 90), matchStart).toLowerCase();
+  const after = text.slice(matchEnd, Math.min(text.length, matchEnd + 30)).toLowerCase();
+  const amountWords = "half|a|an|one|two|three|four|five|six|seven|eight|nine|ten|some|few|\\d+(?:\\.\\d+)?|\\d+\\/\\d+";
+  const unitWords = "cups?|glasses?|ounces?|oz|servings?|bowls?|pieces?|slices?|eggs?";
+  const beforeMatch = before.match(new RegExp(`(?:^|[\\s,.;:])(${amountWords})?\\s*(small|medium|large)?\\s*(${unitWords})?\\s*(?:of\\s+)?$`, "i"));
+  const afterMatch = after.match(new RegExp(`^\\s*(?:x|times|of)?\\s*(${amountWords})(?:\\s*(${unitWords}))?`, "i"));
+  const amount = beforeMatch?.[1] || afterMatch?.[1] || "";
+  const size = beforeMatch?.[2] || "";
+  const unit = normalizeUnit(beforeMatch?.[3] || afterMatch?.[2] || "");
+  const sizeFactors = { small: 0.75, medium: 1, large: 1.35 };
+  const unitServings = food.unitServings?.[unit] || 1;
+  const sizeFactor = sizeFactors[size] || 1;
+
+  return Math.max(0, parseQuantity(amount) * unitServings * sizeFactor);
+}
+
+function nutritionCandidates() {
+  return foodDb
+    .flatMap((food) => food.keys.map((key) => ({ food, key })))
+    .sort((a, b) => b.key.length - a.key.length);
 }
 
 function estimateNutrition(text) {
   const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, calcium: 0 };
   const matched = [];
+  const matchedRanges = [];
 
-  foodDb.forEach((food) => {
-    const servings = servingsForFood(text, food);
-    if (!servings) return;
-    matched.push(`${food.label}${servings === 1 ? "" : ` x${servings}`}`);
-    totals.calories += food.calories * servings;
-    totals.protein += food.protein * servings;
-    totals.carbs += food.carbs * servings;
-    totals.fat += food.fat * servings;
-    totals.fiber += food.fiber * servings;
-    totals.calcium += food.calcium * servings;
+  nutritionCandidates().forEach(({ food, key }) => {
+    const pattern = new RegExp(`(^|[^a-z0-9])(${escapeRegExp(key)})(?=$|[^a-z0-9])`, "gi");
+    let match = pattern.exec(text);
+
+    while (match) {
+      const start = match.index + match[1].length;
+      const end = start + match[2].length;
+      const range = { start, end };
+
+      if (!matchedRanges.some((existing) => rangesOverlap(existing, range))) {
+        const servings = servingsNearMatch(text, start, end, food);
+        const line = {
+          order: start,
+          label: food.label,
+          servings,
+          calories: food.calories * servings,
+          protein: food.protein * servings,
+          carbs: food.carbs * servings,
+          fat: food.fat * servings,
+          fiber: food.fiber * servings,
+          calcium: food.calcium * servings
+        };
+
+        matched.push(line);
+        matchedRanges.push(range);
+        totals.calories += line.calories;
+        totals.protein += line.protein;
+        totals.carbs += line.carbs;
+        totals.fat += line.fat;
+        totals.fiber += line.fiber;
+        totals.calcium += line.calcium;
+      }
+
+      match = pattern.exec(text);
+    }
   });
 
   return {
     totals: Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, Math.round(value)])),
-    matched
+    matched: matched
+      .sort((a, b) => a.order - b.order)
+      .map(({ order, ...item }) => item)
   };
 }
 
@@ -331,7 +460,10 @@ function updateNutrition() {
   setBar("calciumBar", totals.calcium, targets.calcium);
 
   el("matchedFoods").innerHTML = matched.length
-    ? matched.map((item) => `<span>${item}</span>`).join("")
+    ? matched.map((item) => {
+      const servings = item.servings === 1 ? "" : ` x${formatNumber(item.servings, "", 1)}`;
+      return `<span>${item.label}${servings} · ${Math.round(item.calories)} cal</span>`;
+    }).join("")
     : "<span>No foods matched yet</span>";
 
   updateCaloriePlan(totals);
