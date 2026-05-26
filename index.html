@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>good decisions</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Habit tracker navigation">
+        <a class="brand" href="#today" aria-label="good decisions home">
+          <span class="brand-mark" aria-hidden="true">gd</span>
+          <span>
+            <strong>good decisions</strong>
+            <small>healthy habits tracker</small>
+          </span>
+        </a>
+
+        <nav class="nav-list" aria-label="Primary">
+          <a href="#today" class="is-active">Today</a>
+          <a href="#sleep">Sleep</a>
+          <a href="#food">Food</a>
+          <a href="#movement">Movement</a>
+          <a href="#progress">Progress</a>
+          <a href="#insights">Insights</a>
+        </nav>
+
+        <div class="side-card">
+          <p class="eyebrow">Streak</p>
+          <strong id="sideStreakValue">0 days</strong>
+          <span id="sideStreakCopy">Save any one habit today to start the line.</span>
+        </div>
+      </aside>
+
+      <main class="main" id="today">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h1>Make today a set of good decisions.</h1>
+            <p class="start-line" id="startLine">Start date May 25, 2026 · Day 1</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="clearDayButton" type="button">Clear today</button>
+            <button class="primary-button" id="saveDayButton" type="button">Save day</button>
+          </div>
+        </header>
+
+        <section class="capture-panel" aria-labelledby="capture-title">
+          <div class="capture-copy">
+            <p class="eyebrow">Fast update</p>
+            <h2 id="capture-title">Speak it or type it once.</h2>
+            <p>
+              Try: "Slept 11:20 pm to 6:45 am, woke once. Breakfast was Greek yogurt,
+              berries, and oatmeal. Bike 35 minutes easy. Weight 182.5."
+            </p>
+            <div class="hero-visual-frame">
+              <img
+                src="assets/good-decisions-hero.svg"
+                alt="Illustration connecting sleep, food, movement, and progress into one daily path"
+              />
+            </div>
+          </div>
+          <div class="capture-box">
+            <textarea
+              id="quickEntry"
+              rows="5"
+              placeholder="Log sleep, meals, bike rides, or workouts in plain language..."
+            ></textarea>
+            <div class="capture-actions">
+              <button class="secondary-button" id="voiceButton" type="button">Start voice</button>
+              <button class="primary-button" id="parseButton" type="button">Parse update</button>
+            </div>
+            <p class="system-note" id="voiceStatus">Voice input uses your browser's speech tools when available.</p>
+          </div>
+        </section>
+
+        <section class="score-strip" aria-label="Daily foundations">
+          <article>
+            <span>Sleep</span>
+            <strong id="sleepScore">7h 25m</strong>
+            <small>target 7h 45m</small>
+          </article>
+          <article>
+            <span>Calories</span>
+            <strong id="calorieScore">0</strong>
+            <small>rough estimate</small>
+          </article>
+          <article>
+            <span>Deficit</span>
+            <strong id="deficitScore">--</strong>
+            <small id="deficitScoreSub">target 500-1000</small>
+          </article>
+          <article>
+            <span>Protein</span>
+            <strong id="proteinScore">72g</strong>
+            <small>rough estimate</small>
+          </article>
+          <article>
+            <span>Fiber</span>
+            <strong id="fiberScore">19g</strong>
+            <small>goal 25g+</small>
+          </article>
+          <article>
+            <span>Movement</span>
+            <strong id="movementScore">0m</strong>
+            <small>log a workout</small>
+          </article>
+          <article>
+            <span>Weight</span>
+            <strong id="weightScore">--</strong>
+            <small id="weightScoreSub">weekly check-in</small>
+          </article>
+          <article>
+            <span>BMI</span>
+            <strong id="bmiScore">28.3</strong>
+            <small id="bmiScoreSub">overweight range</small>
+          </article>
+          <article>
+            <span>Streak</span>
+            <strong id="streakScore">0d</strong>
+            <small id="streakScoreSub">any log counts</small>
+          </article>
+        </section>
+
+        <section class="completion-panel" id="completionPanel" aria-live="polite">
+          <div>
+            <p class="eyebrow" id="completionEyebrow">Today's checkpoint</p>
+            <h2 id="completionTitle">Complete the three daily basics.</h2>
+            <blockquote id="completionQuote">
+              Log sleep, food, and movement to unlock today's encouraging quote. Weight can stay weekly.
+            </blockquote>
+          </div>
+          <div class="completion-checks" aria-label="Daily completion checklist">
+            <span id="checkSleep">Sleep</span>
+            <span id="checkFood">Food</span>
+            <span id="checkMovement">Movement</span>
+          </div>
+        </section>
+
+        <section class="progress-board" id="progress" aria-label="Progress over time">
+          <article class="panel weight-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Weekly weight</p>
+                <h2>25-pound progress tracker</h2>
+              </div>
+              <span class="status-pill" id="weightPill">Set baseline</span>
+            </div>
+
+            <div class="profile-grid" aria-label="Profile details for BMI">
+              <label>
+                Sex
+                <select id="sex">
+                  <option value="female" selected>Female</option>
+                  <option value="male">Male</option>
+                  <option value="not-specified">Not specified</option>
+                </select>
+              </label>
+              <label>
+                Age years
+                <input id="ageYears" type="number" min="20" max="120" step="1" value="49" />
+              </label>
+              <label>
+                Age months
+                <input id="ageMonths" type="number" min="0" max="11" step="1" value="9" />
+              </label>
+              <label class="height-label">
+                Height
+                <span class="height-fields">
+                  <input id="heightFeet" type="number" min="3" max="8" step="1" value="5" aria-label="Height feet" />
+                  <input id="heightInches" type="number" min="0" max="11" step="1" value="4" aria-label="Height inches" />
+                </span>
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Log date
+                <input id="logDate" type="date" />
+              </label>
+              <label>
+                Weight this week
+                <input id="currentWeight" type="number" min="0" step="0.1" value="165" placeholder="Add weekly weight" />
+              </label>
+              <label>
+                Starting weight
+                <input id="startWeight" type="number" min="0" step="0.1" value="165" placeholder="Auto-filled from first weigh-in" />
+              </label>
+              <label>
+                Goal loss
+                <input id="goalLoss" type="number" min="1" step="0.5" value="25" />
+              </label>
+            </div>
+
+            <div class="goal-meter" aria-label="Weight loss progress">
+              <div class="goal-meter-head">
+                <span id="goalProgressLabel">Add a weight to start tracking.</span>
+                <strong id="goalProgressPercent">0%</strong>
+              </div>
+              <div class="goal-track"><span id="goalProgressBar"></span></div>
+            </div>
+
+            <div class="bmi-card" aria-label="BMI estimate">
+              <div class="bmi-main">
+                <span>Current BMI</span>
+                <strong id="bmiValue">28.3</strong>
+                <small id="bmiCategory">Overweight range</small>
+              </div>
+              <div class="bmi-detail">
+                <div class="bmi-scale" aria-hidden="true">
+                  <span id="bmiMarker"></span>
+                </div>
+                <div class="bmi-scale-labels" aria-hidden="true">
+                  <span>18.5</span>
+                  <span>25</span>
+                  <span>30</span>
+                </div>
+                <p id="bmiCopy">At 5'4" and 165 lb, BMI is 28.3.</p>
+                <p class="system-note" id="targetBmiCopy">Goal-weight BMI: 24.0 at 140 lb.</p>
+              </div>
+            </div>
+
+            <div class="progress-stats">
+              <article>
+                <span>Lost</span>
+                <strong id="poundsLost">--</strong>
+              </article>
+              <article>
+                <span>Remaining</span>
+                <strong id="poundsRemaining">25 lb</strong>
+              </article>
+              <article>
+                <span>Target weight</span>
+                <strong id="targetWeight">--</strong>
+              </article>
+              <article>
+                <span>Latest 7-day avg</span>
+                <strong id="weightAverage">--</strong>
+              </article>
+            </div>
+          </article>
+
+          <article class="panel trends-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Trends</p>
+                <h2>Weekly and monthly view</h2>
+              </div>
+              <div class="segmented-control" aria-label="Trend range">
+                <button class="is-active" type="button" data-view="weekly">Weekly</button>
+                <button type="button" data-view="monthly">Monthly</button>
+              </div>
+            </div>
+
+            <div class="rolling-grid" aria-label="Rolling averages">
+              <article>
+                <span>7-day sleep avg</span>
+                <strong id="avgSleep7">--</strong>
+              </article>
+              <article>
+                <span>7-day calorie avg</span>
+                <strong id="avgCalories7">--</strong>
+              </article>
+              <article>
+                <span>7-day deficit avg</span>
+                <strong id="avgDeficit7">--</strong>
+              </article>
+              <article>
+                <span>7-day fiber avg</span>
+                <strong id="avgFiber7">--</strong>
+              </article>
+              <article>
+                <span>7-day movement avg</span>
+                <strong id="avgMovement7">--</strong>
+              </article>
+              <article>
+                <span>Weight trend</span>
+                <strong id="weightTrend">--</strong>
+              </article>
+            </div>
+
+            <div class="trend-chart" id="trendChart" aria-label="Daily foundation score chart"></div>
+            <div class="trend-list" id="trendList" aria-live="polite"></div>
+          </article>
+        </section>
+
+        <div class="content-grid">
+          <section class="tracker-column">
+            <article class="panel" id="sleep">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Sleep</p>
+                  <h2>Night record</h2>
+                </div>
+                <span class="status-pill" id="sleepPill">In range</span>
+              </div>
+
+              <div class="form-grid">
+                <label>
+                  Went to sleep
+                  <input id="bedtime" type="time" value="23:20" />
+                </label>
+                <label>
+                  Woke up
+                  <input id="waketime" type="time" value="06:45" />
+                </label>
+                <label>
+                  Middle-of-night wakeups
+                  <input id="wakeups" type="number" min="0" max="12" value="1" />
+                </label>
+                <label>
+                  Sleep note
+                  <input id="sleepNote" type="text" placeholder="Restless, deep, travel, late caffeine..." />
+                </label>
+              </div>
+
+              <div class="insight-band">
+                <div>
+                  <span>Estimated sleep</span>
+                  <strong id="sleepDuration">7h 25m</strong>
+                </div>
+                <p id="sleepInsight">One wakeup is logged. Protect the last hour before bed tonight.</p>
+              </div>
+            </article>
+
+            <article class="panel" id="food">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Eating</p>
+                  <h2>Food and rough nutrition</h2>
+                </div>
+                <span class="status-pill muted">Estimate</span>
+              </div>
+
+              <label class="stacked-label">
+                What you ate and rough amounts
+                <textarea
+                  id="foodEntry"
+                  rows="5"
+                  placeholder="Example: 1 cup Greek yogurt, berries, 1/2 cup oatmeal, 2 eggs, chicken bowl with rice..."
+                ></textarea>
+              </label>
+
+              <div class="food-actions">
+                <button class="secondary-button" id="estimateFoodButton" type="button">Estimate nutrition</button>
+                <p class="system-note">Prototype estimates from a small built-in food list. Later we can connect a nutrition API.</p>
+              </div>
+
+              <div class="macro-grid" aria-label="Nutrition estimates">
+                <article>
+                  <span>Calories</span>
+                  <strong id="caloriesValue">0</strong>
+                  <div class="bar"><span id="caloriesBar"></span></div>
+                </article>
+                <article>
+                  <span>Protein</span>
+                  <strong id="proteinValue">72g</strong>
+                  <div class="bar"><span id="proteinBar"></span></div>
+                </article>
+                <article>
+                  <span>Carbs</span>
+                  <strong id="carbsValue">89g</strong>
+                  <div class="bar"><span id="carbsBar"></span></div>
+                </article>
+                <article>
+                  <span>Fat</span>
+                  <strong id="fatValue">28g</strong>
+                  <div class="bar"><span id="fatBar"></span></div>
+                </article>
+                <article>
+                  <span>Fiber</span>
+                  <strong id="fiberValue">19g</strong>
+                  <div class="bar"><span id="fiberBar"></span></div>
+                </article>
+                <article>
+                  <span>Calcium</span>
+                  <strong id="calciumValue">610mg</strong>
+                  <div class="bar"><span id="calciumBar"></span></div>
+                </article>
+              </div>
+
+              <div class="matched-foods" id="matchedFoods" aria-live="polite"></div>
+
+              <div class="calorie-plan" aria-label="Calorie deficit estimate">
+                <div class="panel-header">
+                  <div>
+                    <p class="eyebrow">Calorie deficit</p>
+                    <h2>Daily energy estimate</h2>
+                  </div>
+                  <span class="status-pill muted" id="deficitPill">Set burn</span>
+                </div>
+
+                <div class="form-grid compact">
+                  <label>
+                    Baseline daily burn before workouts
+                    <input id="baselineBurn" type="number" min="1000" step="25" value="2100" />
+                  </label>
+                  <label>
+                    Target pace
+                    <select id="weeklyLossGoal">
+                      <option value="1">1 lb/week</option>
+                      <option value="1.5" selected>1.5 lb/week</option>
+                      <option value="2">2 lb/week</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="deficit-grid">
+                  <article>
+                    <span>Food calories</span>
+                    <strong id="foodCaloriesSummary">0</strong>
+                  </article>
+                  <article>
+                    <span>Workout burn</span>
+                    <strong id="exerciseCaloriesSummary">0</strong>
+                  </article>
+                  <article>
+                    <span>Daily deficit</span>
+                    <strong id="deficitValue">--</strong>
+                  </article>
+                  <article>
+                    <span>Target deficit</span>
+                    <strong id="deficitTarget">750/day</strong>
+                  </article>
+                </div>
+
+                <p class="system-note" id="deficitInsight">
+                  Set your baseline burn once you know it. This estimate uses food calories plus rough workout burn.
+                </p>
+              </div>
+            </article>
+
+            <article class="panel" id="movement">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Exercise</p>
+                  <h2>Bike and workouts</h2>
+                </div>
+                <span class="status-pill" id="movementPill">Bike day</span>
+              </div>
+
+              <div class="movement-layout">
+                <div class="form-grid compact">
+                  <label>
+                    Type
+                    <select id="exerciseType">
+                      <option>Bike</option>
+                      <option>Strength</option>
+                      <option>Walk</option>
+                      <option>Yoga</option>
+                      <option>Other workout</option>
+                    </select>
+                  </label>
+                  <label>
+                    Minutes
+                    <input id="exerciseMinutes" type="number" min="0" value="0" />
+                  </label>
+                  <label>
+                    Distance
+                    <input id="exerciseDistance" type="text" placeholder="Optional: 8.2 mi" />
+                  </label>
+                  <label>
+                    Intensity
+                    <select id="exerciseIntensity">
+                      <option>Easy</option>
+                      <option>Moderate</option>
+                      <option>Hard</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="workout-card">
+                  <span>Today's movement</span>
+                  <strong id="movementSummary">0 min easy bike</strong>
+                  <p id="movementInsight">A short session still counts. Consider a 10-minute walk to round it out.</p>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <aside class="right-rail" aria-label="Motivation and settings">
+            <section class="panel visual-panel">
+              <img
+                src="assets/decision-map.svg"
+                alt="Illustrated weekly path showing daily decision markers moving upward"
+              />
+              <p class="eyebrow">Visual cue</p>
+              <h2>Small decisions compound.</h2>
+            </section>
+
+            <section class="panel inspiration-panel" id="insights">
+              <p class="eyebrow">Daily spark</p>
+              <blockquote id="dailyQuote">
+                "You do not rise to your goals. You fall to your systems."
+              </blockquote>
+              <p class="quote-source">James Clear</p>
+              <button class="ghost-button" id="newSparkButton" type="button">New spark</button>
+            </section>
+
+            <section class="panel challenge-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Challenge</p>
+                  <h2>One small edge</h2>
+                </div>
+              </div>
+              <p id="challengeText">
+                Finish dinner 2 hours before bed and log how your sleep feels tomorrow.
+              </p>
+              <button class="secondary-button" id="swapChallengeButton" type="button">Swap challenge</button>
+            </section>
+
+            <section class="panel read-panel">
+              <p class="eyebrow">Micro-read</p>
+              <h2 id="readTitle">The 10-minute reset</h2>
+              <p id="readText">
+                When the plan feels too big, shrink the action until it can be done now:
+                prep breakfast, fill the water bottle, or walk around the block.
+              </p>
+            </section>
+
+            <section class="panel slack-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Slack prompts</p>
+                  <h2>Daily check-ins</h2>
+                </div>
+                <label class="switch" aria-label="Enable Slack prompts">
+                  <input id="slackEnabled" type="checkbox" checked />
+                  <span></span>
+                </label>
+              </div>
+
+              <div class="form-grid compact">
+                <label>
+                  Morning prompt
+                  <input id="morningPrompt" type="time" value="08:30" />
+                </label>
+                <label>
+                  Evening prompt
+                  <input id="eveningPrompt" type="time" value="21:15" />
+                </label>
+              </div>
+
+              <div class="slack-preview">
+                <span>Preview</span>
+                <p id="slackPreview">
+                  9:15 PM: What did you eat, how did you move, and what time are you aiming to sleep?
+                </p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
+  <title id="title">Good decisions daily habit illustration</title>
+  <desc id="desc">A calm table scene with sleep, food, movement, and progress symbols connected by a path.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff1c8"/>
+      <stop offset=".54" stop-color="#e2eee8"/>
+      <stop offset="1" stop-color="#dff4f0"/>
+    </linearGradient>
+    <linearGradient id="path" x1="0" x2="1">
+      <stop offset="0" stop-color="#3c6b55"/>
+      <stop offset=".55" stop-color="#3b9a95"/>
+      <stop offset="1" stop-color="#d96c5f"/>
+    </linearGradient>
+  </defs>
+  <rect width="920" height="360" rx="28" fill="url(#sky)"/>
+  <path d="M72 255 C190 176 261 290 377 210 C498 126 587 223 686 151 C742 110 799 111 855 130" fill="none" stroke="url(#path)" stroke-width="16" stroke-linecap="round"/>
+  <g fill="#fffefa" stroke="#d3c9b7" stroke-width="3">
+    <rect x="82" y="94" width="170" height="128" rx="24"/>
+    <rect x="293" y="76" width="170" height="146" rx="24"/>
+    <rect x="504" y="94" width="170" height="128" rx="24"/>
+    <rect x="715" y="76" width="124" height="146" rx="24"/>
+  </g>
+  <g transform="translate(113 121)">
+    <path d="M18 55 C18 30 38 10 63 10 C88 10 108 30 108 55 C108 80 88 100 63 100 C38 100 18 80 18 55Z" fill="#16231d"/>
+    <path d="M79 18 C65 25 56 40 56 57 C56 75 66 89 81 96 C59 105 33 92 25 69 C17 45 30 20 54 12 C63 9 72 11 79 18Z" fill="#f6f3eb"/>
+    <rect x="32" y="103" width="86" height="8" rx="4" fill="#87ad98"/>
+  </g>
+  <g transform="translate(329 111)">
+    <circle cx="52" cy="58" r="49" fill="#e2eee8" stroke="#3c6b55" stroke-width="5"/>
+    <path d="M21 58 C42 42 66 42 84 58 C65 75 42 75 21 58Z" fill="#d8a441"/>
+    <path d="M52 25 C64 42 64 75 52 92 C40 75 40 42 52 25Z" fill="#fffefa" opacity=".78"/>
+    <circle cx="52" cy="58" r="10" fill="#3c6b55"/>
+  </g>
+  <g transform="translate(529 120)" fill="none" stroke="#16231d" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="39" cy="76" r="29"/>
+    <circle cx="113" cy="76" r="29"/>
+    <path d="M39 76 L70 30 L92 76 L58 76"/>
+    <path d="M70 30 L91 30"/>
+    <path d="M92 76 L113 76"/>
+    <path d="M58 76 L76 52"/>
+  </g>
+  <g transform="translate(743 103)">
+    <rect x="0" y="95" width="80" height="14" rx="7" fill="#e5ded0"/>
+    <rect x="10" y="36" width="16" height="73" rx="8" fill="#d8a441"/>
+    <rect x="32" y="14" width="16" height="95" rx="8" fill="#3b9a95"/>
+    <rect x="54" y="55" width="16" height="54" rx="8" fill="#d96c5f"/>
+    <path d="M15 15 L38 0 L70 23" fill="none" stroke="#16231d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g fill="#3c6b55">
+    <circle cx="72" cy="255" r="12"/>
+    <circle cx="377" cy="210" r="12"/>
+    <circle cx="686" cy="151" r="12"/>
+    <circle cx="855" cy="130" r="12"/>
+  </g>
+</svg>
