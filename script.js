@@ -642,9 +642,11 @@ function renderBmiSummary(currentWeight, startWeight, goalLoss) {
   const category = getBmiCategory(bmi);
   const targetWeight = startWeight && goalLoss ? startWeight - goalLoss : null;
   const targetBmi = calculateBmi(targetWeight, profile.heightTotalInches);
+  const bmiScore = el("bmiScore");
+  const bmiScoreSub = el("bmiScoreSub");
 
-  el("bmiScore").textContent = formatBmi(bmi);
-  el("bmiScoreSub").textContent = category.label.toLowerCase();
+  if (bmiScore) bmiScore.textContent = formatBmi(bmi);
+  if (bmiScoreSub) bmiScoreSub.textContent = category.label.toLowerCase();
   el("bmiValue").textContent = formatBmi(bmi);
   el("bmiCategory").textContent = category.label;
   el("bmiMarker").style.left = `${markerPositionForBmi(bmi)}%`;

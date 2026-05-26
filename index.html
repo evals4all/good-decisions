@@ -112,11 +112,6 @@
             <small id="weightScoreSub">weekly check-in</small>
           </article>
           <article>
-            <span>BMI</span>
-            <strong id="bmiScore">28.3</strong>
-            <small id="bmiScoreSub">overweight range</small>
-          </article>
-          <article>
             <span>Streak</span>
             <strong id="streakScore">0d</strong>
             <small id="streakScoreSub">any log counts</small>
@@ -148,32 +143,6 @@
               <span class="status-pill" id="weightPill">Set baseline</span>
             </div>
 
-            <div class="profile-grid" aria-label="Profile details for BMI">
-              <label>
-                Sex
-                <select id="sex">
-                  <option value="female" selected>Female</option>
-                  <option value="male">Male</option>
-                  <option value="not-specified">Not specified</option>
-                </select>
-              </label>
-              <label>
-                Age years
-                <input id="ageYears" type="number" min="20" max="120" step="1" value="49" />
-              </label>
-              <label>
-                Age months
-                <input id="ageMonths" type="number" min="0" max="11" step="1" value="9" />
-              </label>
-              <label class="height-label">
-                Height
-                <span class="height-fields">
-                  <input id="heightFeet" type="number" min="3" max="8" step="1" value="5" aria-label="Height feet" />
-                  <input id="heightInches" type="number" min="0" max="11" step="1" value="4" aria-label="Height inches" />
-                </span>
-              </label>
-            </div>
-
             <div class="form-grid">
               <label>
                 Log date
@@ -199,26 +168,6 @@
                 <strong id="goalProgressPercent">0%</strong>
               </div>
               <div class="goal-track"><span id="goalProgressBar"></span></div>
-            </div>
-
-            <div class="bmi-card" aria-label="BMI estimate">
-              <div class="bmi-main">
-                <span>Current BMI</span>
-                <strong id="bmiValue">28.3</strong>
-                <small id="bmiCategory">Overweight range</small>
-              </div>
-              <div class="bmi-detail">
-                <div class="bmi-scale" aria-hidden="true">
-                  <span id="bmiMarker"></span>
-                </div>
-                <div class="bmi-scale-labels" aria-hidden="true">
-                  <span>18.5</span>
-                  <span>25</span>
-                  <span>30</span>
-                </div>
-                <p id="bmiCopy">At 5'4" and 165 lb, BMI is 28.3.</p>
-                <p class="system-note" id="targetBmiCopy">Goal-weight BMI: 24.0 at 140 lb.</p>
-              </div>
             </div>
 
             <div class="progress-stats">
@@ -552,6 +501,62 @@
             </section>
           </aside>
         </div>
+
+        <section class="panel bottom-health-panel" aria-label="Optional BMI and profile details">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Optional health snapshot</p>
+              <h2>BMI and profile details</h2>
+            </div>
+            <span class="status-pill muted">Lower priority</span>
+          </div>
+
+          <div class="profile-grid" aria-label="Profile details for BMI">
+            <label>
+              Sex
+              <select id="sex">
+                <option value="female" selected>Female</option>
+                <option value="male">Male</option>
+                <option value="not-specified">Not specified</option>
+              </select>
+            </label>
+            <label>
+              Age years
+              <input id="ageYears" type="number" min="20" max="120" step="1" value="49" />
+            </label>
+            <label>
+              Age months
+              <input id="ageMonths" type="number" min="0" max="11" step="1" value="9" />
+            </label>
+            <label class="height-label">
+              Height
+              <span class="height-fields">
+                <input id="heightFeet" type="number" min="3" max="8" step="1" value="5" aria-label="Height feet" />
+                <input id="heightInches" type="number" min="0" max="11" step="1" value="4" aria-label="Height inches" />
+              </span>
+            </label>
+          </div>
+
+          <div class="bmi-card" aria-label="BMI estimate">
+            <div class="bmi-main">
+              <span>Current BMI</span>
+              <strong id="bmiValue">28.3</strong>
+              <small id="bmiCategory">Overweight range</small>
+            </div>
+            <div class="bmi-detail">
+              <div class="bmi-scale" aria-hidden="true">
+                <span id="bmiMarker"></span>
+              </div>
+              <div class="bmi-scale-labels" aria-hidden="true">
+                <span>18.5</span>
+                <span>25</span>
+                <span>30</span>
+              </div>
+              <p id="bmiCopy">At 5'4" and 165 lb, BMI is 28.3.</p>
+              <p class="system-note" id="targetBmiCopy">Goal-weight BMI: 24.0 at 140 lb.</p>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
