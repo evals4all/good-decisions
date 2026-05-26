@@ -1,5 +1,7 @@
 # good decisions
 
+A place to log my good decisions relating to my health.
+
 Static website prototype for tracking sleep, food estimates, calories, daily calorie deficit, exercise, weekly weight-loss progress, BMI, streaks, voice or typed updates, Slack prompt settings, and daily motivation.
 
 Program start date: May 25, 2026.
