@@ -79,7 +79,7 @@
         <section class="score-strip" aria-label="Daily foundations">
           <article>
             <span>Sleep</span>
-            <strong id="sleepScore">7h 25m</strong>
+            <strong id="sleepScore">--</strong>
             <small>target 7h 45m</small>
           </article>
           <article>
@@ -258,21 +258,21 @@
                   <p class="eyebrow">Sleep</p>
                   <h2>Night record</h2>
                 </div>
-                <span class="status-pill" id="sleepPill">In range</span>
+                <span class="status-pill muted" id="sleepPill">Not logged</span>
               </div>
 
               <div class="form-grid">
                 <label>
                   Went to sleep
-                  <input id="bedtime" type="time" value="23:20" />
+                  <input id="bedtime" type="time" />
                 </label>
                 <label>
                   Woke up
-                  <input id="waketime" type="time" value="06:45" />
+                  <input id="waketime" type="time" />
                 </label>
                 <label>
                   Middle-of-night wakeups
-                  <input id="wakeups" type="number" min="0" max="12" value="1" />
+                  <input id="wakeups" type="number" min="0" max="12" value="0" />
                 </label>
                 <label>
                   Sleep note
@@ -283,9 +283,9 @@
               <div class="insight-band">
                 <div>
                   <span>Estimated sleep</span>
-                  <strong id="sleepDuration">7h 25m</strong>
+                  <strong id="sleepDuration">--</strong>
                 </div>
-                <p id="sleepInsight">One wakeup is logged. Protect the last hour before bed tonight.</p>
+                <p id="sleepInsight">Add bedtime and wake time to calculate sleep.</p>
               </div>
             </article>
 

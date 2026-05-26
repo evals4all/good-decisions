@@ -243,15 +243,20 @@ function markerPositionForBmi(bmi) {
 }
 
 function minutesFromTime(time) {
-  if (!time || !time.includes(":")) return 0;
+  if (!time || !time.includes(":")) return null;
   const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
   return hours * 60 + minutes;
+}
+
+function hasSleepInput() {
+  return Boolean(el("bedtime").value && el("waketime").value);
 }
 
 function getSleepMinutes() {
   const bedtime = minutesFromTime(el("bedtime").value);
   let waketime = minutesFromTime(el("waketime").value);
-  if (!bedtime && !waketime) return 0;
+  if (bedtime === null || waketime === null) return 0;
   if (waketime <= bedtime) waketime += 24 * 60;
   return Math.max(0, waketime - bedtime);
 }
@@ -259,10 +264,20 @@ function getSleepMinutes() {
 function calculateSleep() {
   const duration = getSleepMinutes();
   const wakeups = Number(el("wakeups").value || 0);
+  const pill = el("sleepPill");
+
+  if (!hasSleepInput() || !duration) {
+    el("sleepDuration").textContent = "--";
+    el("sleepScore").textContent = "--";
+    pill.textContent = "Not logged";
+    pill.classList.add("muted");
+    el("sleepInsight").textContent = "Add bedtime and wake time to calculate sleep.";
+    return;
+  }
+
   el("sleepDuration").textContent = formatDuration(duration);
   el("sleepScore").textContent = formatDuration(duration);
 
-  const pill = el("sleepPill");
   if (duration >= targets.sleepMinutes && wakeups <= 1) {
     pill.textContent = "In range";
     pill.classList.remove("muted");
@@ -613,6 +628,7 @@ function migrateBaselineBurn(value) {
 function collectCurrentDay() {
   const nutrition = estimateNutrition(el("foodEntry").value).totals;
   const caloriePlan = getCaloriePlan(nutrition);
+  const sleepLogged = hasSleepInput();
   return {
     date: el("logDate").value || todayISO(),
     quickEntry: el("quickEntry").value,
@@ -621,7 +637,8 @@ function collectCurrentDay() {
     waketime: el("waketime").value,
     wakeups: Number(el("wakeups").value || 0),
     sleepNote: el("sleepNote").value,
-    sleepMinutes: getSleepMinutes(),
+    sleepLogged,
+    sleepMinutes: sleepLogged ? getSleepMinutes() : 0,
     nutrition,
     caloriePlan,
     exerciseType: el("exerciseType").value,
@@ -644,8 +661,19 @@ function collectCurrentDay() {
   };
 }
 
+function hasSleepCue(text) {
+  return /\b(sleep|slept|bed|bedtime|woke|wake|wakeups?|restless|deep|tired)\b/i.test(String(text || ""));
+}
+
+function hasSleepIntent(entry) {
+  if (typeof entry.sleepLogged === "boolean") return entry.sleepLogged;
+  if (String(entry.sleepNote || "").trim()) return true;
+  if (hasSleepCue(entry.quickEntry)) return true;
+  return Boolean(entry.bedtime && entry.waketime && !String(entry.quickEntry || "").trim());
+}
+
 function hasSleepLog(entry) {
-  return Number.isFinite(entry.sleepMinutes) && entry.sleepMinutes > 0;
+  return hasSleepIntent(entry) && Number.isFinite(entry.sleepMinutes) && entry.sleepMinutes > 0;
 }
 
 function hasFoodLog(entry) {
@@ -715,7 +743,7 @@ function average(values) {
 function dailyScore(entry) {
   const nutrition = nutritionForEntry(entry);
   if (!entry.sleepMinutes && !nutrition.calories && !entry.exerciseMinutes) return 0;
-  const sleepScore = Math.min((entry.sleepMinutes || 0) / targets.sleepMinutes, 1);
+  const sleepScore = Math.min((hasSleepLog(entry) ? entry.sleepMinutes : 0) / targets.sleepMinutes, 1);
   const fiberScore = Math.min((nutrition.fiber || 0) / targets.fiber, 1);
   const movementScore = Math.min((entry.exerciseMinutes || 0) / targets.movementMinutes, 1);
   return Math.round(((sleepScore + fiberScore + movementScore) / 3) * 100);
@@ -877,7 +905,7 @@ function renderTrends() {
   const rangeEntries = entriesForRange(entries, endDate, rangeDays);
   const savedRangeEntries = rangeEntries.filter(hasEntrySignal);
 
-  const avgSleep = average(sevenDayEntries.map((entry) => entry.sleepMinutes));
+  const avgSleep = average(sevenDayEntries.map((entry) => (hasSleepLog(entry) ? entry.sleepMinutes : null)));
   const avgCalories = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).calories));
   const avgDeficit = average(sevenDayEntries.map((entry) => deficitForEntry(entry, nutritionForEntry(entry))));
   const avgFiber = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).fiber));
@@ -921,7 +949,7 @@ function renderTrends() {
       const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories} cal` : "cal --";
       const deficitLabel = Number.isFinite(deficit) ? `${Math.round(deficit)} def` : "def --";
       const movement = Number.isFinite(entry.exerciseMinutes) ? `${entry.exerciseMinutes}m move` : "move --";
-      const sleep = entry.sleepMinutes ? formatDuration(entry.sleepMinutes) : "sleep --";
+      const sleep = hasSleepLog(entry) ? formatDuration(entry.sleepMinutes) : "sleep --";
       const weight = entry.weight ? formatWeight(entry.weight) : "weight --";
       return `
         <div class="trend-row">
@@ -978,7 +1006,7 @@ function renderHistoryLookback() {
     .map((entry) => {
       const nutrition = nutritionForEntry(entry);
       const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories.toLocaleString()} cal` : "cal --";
-      const sleep = entry.sleepMinutes ? formatDuration(entry.sleepMinutes) : "sleep --";
+      const sleep = hasSleepLog(entry) ? formatDuration(entry.sleepMinutes) : "sleep --";
       const movement = Number.isFinite(entry.exerciseMinutes) && entry.exerciseMinutes > 0 ? `${entry.exerciseMinutes}m move` : "move --";
       return `
         <button class="history-day ${entry.date === selectedEntry.date ? "is-active" : ""}" type="button" data-history-date="${entry.date}">
@@ -1002,7 +1030,7 @@ function renderHistoryLookback() {
     : "<span>No foods matched</span>";
   const foodText = selectedEntry.foodEntry ? escapeHtml(selectedEntry.foodEntry) : "No food logged.";
   const wakeups = Number.isFinite(selectedEntry.wakeups) ? selectedEntry.wakeups : 0;
-  const sleepText = selectedEntry.sleepMinutes
+  const sleepText = hasSleepLog(selectedEntry)
     ? `${escapeHtml(selectedEntry.bedtime || "--")} to ${escapeHtml(selectedEntry.waketime || "--")} · ${formatDuration(selectedEntry.sleepMinutes)} · ${wakeups} wakeup${wakeups === 1 ? "" : "s"}`
     : "No sleep logged.";
   const movementText =
@@ -1038,7 +1066,7 @@ function renderHistoryLookback() {
       </article>
       <article>
         <span>Sleep</span>
-        <strong>${selectedEntry.sleepMinutes ? formatDuration(selectedEntry.sleepMinutes) : "--"}</strong>
+        <strong>${hasSleepLog(selectedEntry) ? formatDuration(selectedEntry.sleepMinutes) : "--"}</strong>
       </article>
       <article>
         <span>Weight</span>
@@ -1104,8 +1132,6 @@ function applyEntry(entry) {
   const fields = [
     "quickEntry",
     "foodEntry",
-    "bedtime",
-    "waketime",
     "sleepNote",
     "exerciseType",
     "exerciseDistance",
@@ -1125,7 +1151,15 @@ function applyEntry(entry) {
   });
 
   if (entry.date) el("logDate").value = entry.date;
-  if (entry.wakeups !== undefined) el("wakeups").value = entry.wakeups;
+  if (hasSleepIntent(entry)) {
+    if (entry.bedtime !== undefined) el("bedtime").value = entry.bedtime;
+    if (entry.waketime !== undefined) el("waketime").value = entry.waketime;
+    if (entry.wakeups !== undefined) el("wakeups").value = entry.wakeups;
+  } else {
+    el("bedtime").value = "";
+    el("waketime").value = "";
+    el("wakeups").value = "0";
+  }
   if (entry.exerciseMinutes !== undefined) el("exerciseMinutes").value = entry.exerciseMinutes;
   if (entry.weight !== undefined && entry.weight !== null) el("currentWeight").value = entry.weight;
   if (entry.startWeight !== undefined && entry.startWeight !== null) el("startWeight").value = entry.startWeight;
@@ -1184,8 +1218,8 @@ function resetEntryFields(keepDate = true) {
   el("quickEntry").value = "";
   el("foodEntry").value = "";
   el("sleepNote").value = "";
-  el("bedtime").value = "23:00";
-  el("waketime").value = "06:30";
+  el("bedtime").value = "";
+  el("waketime").value = "";
   el("wakeups").value = "0";
   el("exerciseType").value = "Bike";
   el("exerciseMinutes").value = "0";
@@ -1219,6 +1253,51 @@ function loadSelectedDate() {
   refreshAll();
 }
 
+function parseWakeupCount(lower) {
+  if (/(did not|didn't|no|zero)\s+(?:wake|wakeup|wakeups)|slept through/.test(lower)) return 0;
+
+  const wordMap = { once: 1, one: 1, twice: 2, two: 2, three: 3, four: 4, five: 5, six: 6 };
+  const countWords = "once|one|twice|two|three|four|five|six|\\d+";
+  const patterns = [
+    new RegExp(`woke(?: up)?\\s*(${countWords})`, "i"),
+    new RegExp(`(${countWords})\\s*(?:times?|wakeups?)`, "i")
+  ];
+
+  for (const pattern of patterns) {
+    const match = lower.match(pattern);
+    if (match) return Number(wordMap[match[1]] || match[1]);
+  }
+
+  if (/woke(?: up)?.*(middle of the night|overnight|during the night)/.test(lower)) return 1;
+  return null;
+}
+
+function parseSleepTimes(lower) {
+  const time = "(\\d{1,2}(?::\\d{2})?)\\s*(a\\.?m\\.?|p\\.?m\\.?)?";
+  const rangeMatch =
+    lower.match(new RegExp(`(?:sleep|slept|bed|bedtime).*?${time}\\s*(?:to|-|until)\\s*${time}`, "i")) ||
+    lower.match(new RegExp(`(?:from\\s*)?${time}\\s*(?:to|-|until)\\s*${time}.*?(?:sleep|slept|bed|woke|wake)`, "i"));
+
+  if (rangeMatch) {
+    return {
+      bedtime: toTimeInput(rangeMatch[1], rangeMatch[2] || "pm"),
+      waketime: toTimeInput(rangeMatch[3], rangeMatch[4] || "am")
+    };
+  }
+
+  const bedtimeMatch = lower.match(new RegExp(`(?:went to sleep|went to bed|bedtime|\\bbed\\b|\\bsleep\\b|slept)\\s*(?:at|around|about)?\\s*${time}`, "i"));
+  const waketimeMatch = lower.match(new RegExp(`(?:woke up|woke|wake up|wake|got up)\\s*(?:at|around|about)?\\s*${time}`, "i"));
+
+  if (bedtimeMatch && waketimeMatch) {
+    return {
+      bedtime: toTimeInput(bedtimeMatch[1], bedtimeMatch[2] || "pm"),
+      waketime: toTimeInput(waketimeMatch[1], waketimeMatch[2] || "am")
+    };
+  }
+
+  return null;
+}
+
 function parseQuickEntry() {
   const text = el("quickEntry").value.trim();
   if (!text) {
@@ -1227,18 +1306,14 @@ function parseQuickEntry() {
   }
 
   const lower = text.toLowerCase();
-  const sleepMatch = lower.match(/(?:sleep|slept|bed|bedtime).*?(\d{1,2}(?::\d{2})?)\s*(am|pm)?\s*(?:to|-|until)\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)?/);
-  if (sleepMatch) {
-    el("bedtime").value = toTimeInput(sleepMatch[1], sleepMatch[2] || "pm");
-    el("waketime").value = toTimeInput(sleepMatch[3], sleepMatch[4] || "am");
+  const sleepTimes = parseSleepTimes(lower);
+  if (sleepTimes) {
+    el("bedtime").value = sleepTimes.bedtime;
+    el("waketime").value = sleepTimes.waketime;
   }
 
-  if (lower.includes("woke once")) el("wakeups").value = "1";
-  else if (lower.includes("woke twice")) el("wakeups").value = "2";
-  else {
-    const wakeMatch = lower.match(/woke\s+(\d+)/);
-    if (wakeMatch) el("wakeups").value = wakeMatch[1];
-  }
+  const wakeupCount = parseWakeupCount(lower);
+  if (wakeupCount !== null) el("wakeups").value = String(wakeupCount);
 
   const weightMatch = lower.match(/(?:weight|weigh|weighed)\s*(?:was|is|in at)?\s*(\d{2,3}(?:\.\d+)?)/);
   if (weightMatch) el("currentWeight").value = weightMatch[1];
@@ -1281,7 +1356,7 @@ function toTimeInput(raw, ampm) {
   const [hourRaw, minuteRaw = "00"] = raw.split(":");
   let hour = Number(hourRaw);
   const minute = Number(minuteRaw);
-  const marker = ampm.toLowerCase();
+  const marker = String(ampm || "").toLowerCase().replace(/\./g, "");
   if (marker === "pm" && hour < 12) hour += 12;
   if (marker === "am" && hour === 12) hour = 0;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
