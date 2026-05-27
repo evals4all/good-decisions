@@ -146,6 +146,10 @@ const historyState = {
   selectedDate: ""
 };
 
+const workoutState = {
+  entries: []
+};
+
 const el = (id) => document.getElementById(id);
 
 function todayISO() {
@@ -440,10 +444,92 @@ function estimateExerciseCalories(type = el("exerciseType").value, intensity = e
   return Math.round(minutes * rate);
 }
 
+function normalizeWorkout(workout) {
+  const minutes = Number(workout.minutes || workout.exerciseMinutes || 0);
+  return {
+    type: workout.type || workout.exerciseType || "Other workout",
+    minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 0,
+    distance: workout.distance || workout.exerciseDistance || "",
+    intensity: workout.intensity || workout.exerciseIntensity || "Easy"
+  };
+}
+
+function getDraftWorkout() {
+  const minutes = Number(el("exerciseMinutes").value || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return normalizeWorkout({
+    type: el("exerciseType").value,
+    minutes,
+    distance: el("exerciseDistance").value.trim(),
+    intensity: el("exerciseIntensity").value
+  });
+}
+
+function getCurrentWorkouts() {
+  if (workoutState.entries.length) return workoutState.entries.map(normalizeWorkout).filter((workout) => workout.minutes > 0);
+  const draft = getDraftWorkout();
+  return draft ? [draft] : [];
+}
+
+function workoutsForEntry(entry) {
+  if (Array.isArray(entry.workouts) && entry.workouts.length) {
+    return entry.workouts.map(normalizeWorkout).filter((workout) => workout.minutes > 0);
+  }
+  if (Number.isFinite(entry.exerciseMinutes) && entry.exerciseMinutes > 0) {
+    return [
+      normalizeWorkout({
+        type: entry.exerciseType,
+        minutes: entry.exerciseMinutes,
+        distance: entry.exerciseDistance,
+        intensity: entry.exerciseIntensity
+      })
+    ];
+  }
+  return [];
+}
+
+function totalWorkoutMinutes(workouts) {
+  return workouts.reduce((sum, workout) => sum + workout.minutes, 0);
+}
+
+function totalWorkoutCalories(workouts) {
+  return workouts.reduce((sum, workout) => sum + estimateExerciseCalories(workout.type, workout.intensity, workout.minutes), 0);
+}
+
+function formatWorkout(workout) {
+  const intensity = String(workout.intensity || "Easy").toLowerCase();
+  const type = String(workout.type || "movement").toLowerCase();
+  return `${formatNumber(workout.minutes, "m")}${workout.distance ? ` ${workout.distance}` : ""} ${intensity} ${type}`;
+}
+
+function resetWorkoutInputs() {
+  el("exerciseType").value = "Bike";
+  el("exerciseMinutes").value = "0";
+  el("exerciseDistance").value = "";
+  el("exerciseIntensity").value = "Easy";
+}
+
+function renderWorkoutList() {
+  const list = el("workoutList");
+  if (!workoutState.entries.length) {
+    list.innerHTML = '<p class="empty-workouts">Add more than one workout here, or use the fields above for a single workout.</p>';
+    return;
+  }
+
+  list.innerHTML = workoutState.entries
+    .map((workout, index) => `
+      <div class="workout-row">
+        <span>${escapeHtml(formatWorkout(workout))}</span>
+        <button class="ghost-button icon-button" type="button" data-workout-index="${index}" aria-label="Remove ${escapeHtml(workout.type)} workout">&times;</button>
+      </div>
+    `)
+    .join("");
+}
+
 function getCaloriePlan(nutrition = estimateNutrition(el("foodEntry").value).totals) {
   const baselineBurn = Number(el("baselineBurn").value || 0);
   const weeklyLossGoal = Number(el("weeklyLossGoal").value || 1.5);
-  const exerciseCalories = estimateExerciseCalories();
+  const exerciseCalories = totalWorkoutCalories(getCurrentWorkouts());
   const totalBurn = baselineBurn + exerciseCalories;
   const deficit = totalBurn && nutrition.calories ? totalBurn - nutrition.calories : null;
   const targetDeficit = Math.round((weeklyLossGoal * 3500) / 7);
@@ -546,18 +632,25 @@ function updateCaloriePlan(nutrition = estimateNutrition(el("foodEntry").value).
 }
 
 function updateMovement() {
-  const type = el("exerciseType").value;
-  const minutes = Number(el("exerciseMinutes").value || 0);
-  const intensity = el("exerciseIntensity").value.toLowerCase();
-  const distance = el("exerciseDistance").value.trim();
-  const summary = `${minutes} min ${intensity} ${type.toLowerCase()}${distance ? `, ${distance}` : ""}`;
+  const workouts = getCurrentWorkouts();
+  const minutes = totalWorkoutMinutes(workouts);
+  const summary = workouts.length ? `${formatNumber(minutes, " min")} total · ${workouts.map(formatWorkout).join(", ")}` : "No workout logged";
   el("movementSummary").textContent = summary;
-  el("movementScore").textContent = `${minutes}m`;
-  el("movementPill").textContent = type === "Bike" ? "Bike day" : "Workout day";
-  el("movementInsight").textContent =
-    minutes >= targets.movementMinutes
-      ? "Enough to reinforce the habit. Add 5 minutes of mobility before bed."
+  el("movementScore").textContent = `${formatNumber(minutes, "m")}`;
+  const pill = el("movementPill");
+  if (!workouts.length) {
+    pill.textContent = "Not logged";
+    pill.classList.add("muted");
+  } else {
+    pill.textContent = workouts.length > 1 ? "Stacked day" : workouts[0].type === "Bike" ? "Bike day" : "Workout day";
+    pill.classList.remove("muted");
+  }
+  el("movementInsight").textContent = !workouts.length
+    ? "Add a walk, ride, strength session, or any other movement."
+    : minutes >= targets.movementMinutes
+      ? `${workouts.length} workout${workouts.length === 1 ? "" : "s"} logged. Enough to reinforce the habit.`
       : "A short session still counts. Consider a 10-minute walk to round it out.";
+  renderWorkoutList();
 }
 
 function updateSlackPreview() {
@@ -629,6 +722,8 @@ function collectCurrentDay() {
   const nutrition = estimateNutrition(el("foodEntry").value).totals;
   const caloriePlan = getCaloriePlan(nutrition);
   const sleepLogged = hasSleepInput();
+  const workouts = getCurrentWorkouts();
+  const primaryWorkout = workouts[0] || normalizeWorkout({});
   return {
     date: el("logDate").value || todayISO(),
     quickEntry: el("quickEntry").value,
@@ -641,10 +736,11 @@ function collectCurrentDay() {
     sleepMinutes: sleepLogged ? getSleepMinutes() : 0,
     nutrition,
     caloriePlan,
-    exerciseType: el("exerciseType").value,
-    exerciseMinutes: Number(el("exerciseMinutes").value || 0),
-    exerciseDistance: el("exerciseDistance").value,
-    exerciseIntensity: el("exerciseIntensity").value,
+    workouts,
+    exerciseType: primaryWorkout.type,
+    exerciseMinutes: totalWorkoutMinutes(workouts),
+    exerciseDistance: primaryWorkout.distance,
+    exerciseIntensity: primaryWorkout.intensity,
     weight: numberOrNull(el("currentWeight").value),
     startWeight: numberOrNull(el("startWeight").value),
     goalLoss: Number(el("goalLoss").value || 25),
@@ -681,7 +777,7 @@ function hasFoodLog(entry) {
 }
 
 function hasMovementLog(entry) {
-  return Number.isFinite(entry.exerciseMinutes) && entry.exerciseMinutes > 0;
+  return totalWorkoutMinutes(workoutsForEntry(entry)) > 0;
 }
 
 function hasWeightLog(entry) {
@@ -742,10 +838,11 @@ function average(values) {
 
 function dailyScore(entry) {
   const nutrition = nutritionForEntry(entry);
-  if (!entry.sleepMinutes && !nutrition.calories && !entry.exerciseMinutes) return 0;
+  const movementMinutes = totalWorkoutMinutes(workoutsForEntry(entry));
+  if (!entry.sleepMinutes && !nutrition.calories && !movementMinutes) return 0;
   const sleepScore = Math.min((hasSleepLog(entry) ? entry.sleepMinutes : 0) / targets.sleepMinutes, 1);
   const fiberScore = Math.min((nutrition.fiber || 0) / targets.fiber, 1);
-  const movementScore = Math.min((entry.exerciseMinutes || 0) / targets.movementMinutes, 1);
+  const movementScore = Math.min(movementMinutes / targets.movementMinutes, 1);
   return Math.round(((sleepScore + fiberScore + movementScore) / 3) * 100);
 }
 
@@ -909,7 +1006,7 @@ function renderTrends() {
   const avgCalories = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).calories));
   const avgDeficit = average(sevenDayEntries.map((entry) => deficitForEntry(entry, nutritionForEntry(entry))));
   const avgFiber = average(sevenDayEntries.map((entry) => nutritionForEntry(entry).fiber));
-  const avgMovement = average(sevenDayEntries.map((entry) => entry.exerciseMinutes));
+  const avgMovement = average(sevenDayEntries.map((entry) => totalWorkoutMinutes(workoutsForEntry(entry))));
 
   el("avgSleep7").textContent = avgSleep ? formatDuration(avgSleep) : "--";
   el("avgCalories7").textContent = avgCalories !== null ? formatCalories(avgCalories).replace(" kcal", "") : "--";
@@ -948,7 +1045,8 @@ function renderTrends() {
       const fiber = Number.isFinite(nutrition.fiber) ? `${nutrition.fiber}g fiber` : "fiber --";
       const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories} cal` : "cal --";
       const deficitLabel = Number.isFinite(deficit) ? `${Math.round(deficit)} def` : "def --";
-      const movement = Number.isFinite(entry.exerciseMinutes) ? `${entry.exerciseMinutes}m move` : "move --";
+      const movementMinutes = totalWorkoutMinutes(workoutsForEntry(entry));
+      const movement = movementMinutes ? `${formatNumber(movementMinutes, "m")} move` : "move --";
       const sleep = hasSleepLog(entry) ? formatDuration(entry.sleepMinutes) : "sleep --";
       const weight = entry.weight ? formatWeight(entry.weight) : "weight --";
       return `
@@ -1007,7 +1105,8 @@ function renderHistoryLookback() {
       const nutrition = nutritionForEntry(entry);
       const calories = Number.isFinite(nutrition.calories) ? `${nutrition.calories.toLocaleString()} cal` : "cal --";
       const sleep = hasSleepLog(entry) ? formatDuration(entry.sleepMinutes) : "sleep --";
-      const movement = Number.isFinite(entry.exerciseMinutes) && entry.exerciseMinutes > 0 ? `${entry.exerciseMinutes}m move` : "move --";
+      const movementMinutes = totalWorkoutMinutes(workoutsForEntry(entry));
+      const movement = movementMinutes ? `${formatNumber(movementMinutes, "m")} move` : "move --";
       return `
         <button class="history-day ${entry.date === selectedEntry.date ? "is-active" : ""}" type="button" data-history-date="${entry.date}">
           <strong>${dateLabel(entry.date, { weekday: "short", month: "short", day: "numeric" })}</strong>
@@ -1033,10 +1132,8 @@ function renderHistoryLookback() {
   const sleepText = hasSleepLog(selectedEntry)
     ? `${escapeHtml(selectedEntry.bedtime || "--")} to ${escapeHtml(selectedEntry.waketime || "--")} · ${formatDuration(selectedEntry.sleepMinutes)} · ${wakeups} wakeup${wakeups === 1 ? "" : "s"}`
     : "No sleep logged.";
-  const movementText =
-    Number.isFinite(selectedEntry.exerciseMinutes) && selectedEntry.exerciseMinutes > 0
-      ? `${selectedEntry.exerciseMinutes} min ${escapeHtml(String(selectedEntry.exerciseIntensity || "easy").toLowerCase())} ${escapeHtml(String(selectedEntry.exerciseType || "movement").toLowerCase())}${selectedEntry.exerciseDistance ? ` · ${escapeHtml(selectedEntry.exerciseDistance)}` : ""}`
-      : "No movement logged.";
+  const selectedWorkouts = workoutsForEntry(selectedEntry);
+  const movementText = selectedWorkouts.length ? selectedWorkouts.map((workout) => escapeHtml(formatWorkout(workout))).join("; ") : "No movement logged.";
 
   el("historyDetail").innerHTML = `
     <div class="history-detail-head">
@@ -1133,9 +1230,6 @@ function applyEntry(entry) {
     "quickEntry",
     "foodEntry",
     "sleepNote",
-    "exerciseType",
-    "exerciseDistance",
-    "exerciseIntensity",
     "sex",
     "ageYears",
     "ageMonths",
@@ -1151,6 +1245,7 @@ function applyEntry(entry) {
   });
 
   if (entry.date) el("logDate").value = entry.date;
+  workoutState.entries = Array.isArray(entry.workouts) ? entry.workouts.map(normalizeWorkout).filter((workout) => workout.minutes > 0) : [];
   if (hasSleepIntent(entry)) {
     if (entry.bedtime !== undefined) el("bedtime").value = entry.bedtime;
     if (entry.waketime !== undefined) el("waketime").value = entry.waketime;
@@ -1160,7 +1255,14 @@ function applyEntry(entry) {
     el("waketime").value = "";
     el("wakeups").value = "0";
   }
-  if (entry.exerciseMinutes !== undefined) el("exerciseMinutes").value = entry.exerciseMinutes;
+  if (workoutState.entries.length) {
+    resetWorkoutInputs();
+  } else {
+    if (entry.exerciseType !== undefined) el("exerciseType").value = entry.exerciseType;
+    if (entry.exerciseMinutes !== undefined) el("exerciseMinutes").value = entry.exerciseMinutes;
+    if (entry.exerciseDistance !== undefined) el("exerciseDistance").value = entry.exerciseDistance;
+    if (entry.exerciseIntensity !== undefined) el("exerciseIntensity").value = entry.exerciseIntensity;
+  }
   if (entry.weight !== undefined && entry.weight !== null) el("currentWeight").value = entry.weight;
   if (entry.startWeight !== undefined && entry.startWeight !== null) el("startWeight").value = entry.startWeight;
   if (entry.goalLoss !== undefined) el("goalLoss").value = entry.goalLoss;
@@ -1225,6 +1327,7 @@ function resetEntryFields(keepDate = true) {
   el("exerciseMinutes").value = "0";
   el("exerciseDistance").value = "";
   el("exerciseIntensity").value = "Easy";
+  workoutState.entries = [];
   el("currentWeight").value = "";
   el("baselineBurn").value = String(calorieDefaults.baselineBurn);
   el("weeklyLossGoal").value = "1.5";
@@ -1298,6 +1401,57 @@ function parseSleepTimes(lower) {
   return null;
 }
 
+function workoutTypeFromText(value) {
+  const lower = String(value || "").toLowerCase();
+  if (/(bike|biking|ride|cycling|cycle)/.test(lower)) return "Bike";
+  if (/(strength|weights|lifting|weight training)/.test(lower)) return "Strength";
+  if (/(walk|walking)/.test(lower)) return "Walk";
+  if (/yoga/.test(lower)) return "Yoga";
+  return "Other workout";
+}
+
+function intensityNearText(text) {
+  if (/\bhard\b/.test(text)) return "Hard";
+  if (/\bmoderate\b/.test(text)) return "Moderate";
+  return "Easy";
+}
+
+function parseWorkoutEntries(lower) {
+  const workouts = [];
+  const ranges = [];
+  const typeWords = "bike|biking|ride|cycling|cycle|strength|weights|lifting|weight training|walk|walking|yoga|workout";
+  const patterns = [
+    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:min|mins|minute|minutes)\\s*(?:of\\s+)?(${typeWords})`, "gi"),
+    new RegExp(`(${typeWords}).{0,24}?(\\d+(?:\\.\\d+)?)\\s*(?:min|mins|minute|minutes)`, "gi")
+  ];
+
+  patterns.forEach((pattern, patternIndex) => {
+    let match = pattern.exec(lower);
+    while (match) {
+      const range = { start: match.index, end: pattern.lastIndex };
+      if (!ranges.some((existing) => rangesOverlap(existing, range))) {
+        const minutes = Number(patternIndex === 0 ? match[1] : match[2]);
+        const typeText = patternIndex === 0 ? match[2] : match[1];
+        const context = lower.slice(Math.max(0, range.start - 30), Math.min(lower.length, range.end + 30));
+        workouts.push({
+          order: range.start,
+          type: workoutTypeFromText(typeText),
+          minutes,
+          distance: "",
+          intensity: intensityNearText(context)
+        });
+        ranges.push(range);
+      }
+      match = pattern.exec(lower);
+    }
+  });
+
+  return workouts
+    .sort((a, b) => a.order - b.order)
+    .map(({ order, ...workout }) => normalizeWorkout(workout))
+    .filter((workout) => workout.minutes > 0);
+}
+
 function parseQuickEntry() {
   const text = el("quickEntry").value.trim();
   if (!text) {
@@ -1333,14 +1487,10 @@ function parseQuickEntry() {
   if (lower.includes("female")) el("sex").value = "female";
   else if (lower.includes("male")) el("sex").value = "male";
 
-  const exerciseMatch = lower.match(/(bike|workout|strength|walk|yoga).*?(\d+)\s*(?:min|minute|minutes)/);
-  if (exerciseMatch) {
-    const typeMap = { bike: "Bike", workout: "Other workout", strength: "Strength", walk: "Walk", yoga: "Yoga" };
-    el("exerciseType").value = typeMap[exerciseMatch[1]];
-    el("exerciseMinutes").value = exerciseMatch[2];
-    if (lower.includes("hard")) el("exerciseIntensity").value = "Hard";
-    else if (lower.includes("moderate")) el("exerciseIntensity").value = "Moderate";
-    else el("exerciseIntensity").value = "Easy";
+  const workouts = parseWorkoutEntries(lower);
+  if (workouts.length) {
+    workoutState.entries = workouts;
+    resetWorkoutInputs();
   }
 
   const foodWords = foodDb.flatMap((food) => food.keys);
@@ -1425,6 +1575,18 @@ function refreshAll() {
   renderStreaks();
 }
 
+function addWorkoutFromFields() {
+  const workout = getDraftWorkout();
+  if (!workout) {
+    showToast("Add workout minutes first.");
+    return;
+  }
+  workoutState.entries.push(workout);
+  resetWorkoutInputs();
+  refreshAll();
+  showToast("Workout added.");
+}
+
 ["bedtime", "waketime", "wakeups"].forEach((id) => el(id).addEventListener("input", refreshAll));
 ["exerciseType", "exerciseMinutes", "exerciseDistance", "exerciseIntensity"].forEach((id) =>
   el(id).addEventListener("input", refreshAll)
@@ -1449,6 +1611,13 @@ el("estimateFoodButton").addEventListener("click", () => {
   showToast("Updated rough nutrition estimate.");
 });
 el("foodEntry").addEventListener("input", refreshAll);
+el("addWorkoutButton").addEventListener("click", addWorkoutFromFields);
+el("workoutList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-workout-index]");
+  if (!button) return;
+  workoutState.entries.splice(Number(button.dataset.workoutIndex), 1);
+  refreshAll();
+});
 el("historyDays").addEventListener("click", (event) => {
   const button = event.target.closest("[data-history-date]");
   if (!button) return;

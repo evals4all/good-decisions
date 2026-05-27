@@ -402,43 +402,49 @@
                   <p class="eyebrow">Exercise</p>
                   <h2>Bike and workouts</h2>
                 </div>
-                <span class="status-pill" id="movementPill">Bike day</span>
+                <span class="status-pill muted" id="movementPill">Not logged</span>
               </div>
 
               <div class="movement-layout">
-                <div class="form-grid compact">
-                  <label>
-                    Type
-                    <select id="exerciseType">
-                      <option>Bike</option>
-                      <option>Strength</option>
-                      <option>Walk</option>
-                      <option>Yoga</option>
-                      <option>Other workout</option>
-                    </select>
-                  </label>
-                  <label>
-                    Minutes
-                    <input id="exerciseMinutes" type="number" min="0" value="0" />
-                  </label>
-                  <label>
-                    Distance
-                    <input id="exerciseDistance" type="text" placeholder="Optional: 8.2 mi" />
-                  </label>
-                  <label>
-                    Intensity
-                    <select id="exerciseIntensity">
-                      <option>Easy</option>
-                      <option>Moderate</option>
-                      <option>Hard</option>
-                    </select>
-                  </label>
+                <div class="workout-builder">
+                  <div class="form-grid compact">
+                    <label>
+                      Type
+                      <select id="exerciseType">
+                        <option>Bike</option>
+                        <option>Strength</option>
+                        <option>Walk</option>
+                        <option>Yoga</option>
+                        <option>Other workout</option>
+                      </select>
+                    </label>
+                    <label>
+                      Minutes
+                      <input id="exerciseMinutes" type="number" min="0" value="0" />
+                    </label>
+                    <label>
+                      Distance
+                      <input id="exerciseDistance" type="text" placeholder="Optional: 8.2 mi" />
+                    </label>
+                    <label>
+                      Intensity
+                      <select id="exerciseIntensity">
+                        <option>Easy</option>
+                        <option>Moderate</option>
+                        <option>Hard</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="workout-actions">
+                    <button class="secondary-button" id="addWorkoutButton" type="button">Add workout</button>
+                  </div>
+                  <div class="workout-list" id="workoutList" aria-live="polite"></div>
                 </div>
 
                 <div class="workout-card">
                   <span>Today's movement</span>
-                  <strong id="movementSummary">0 min easy bike</strong>
-                  <p id="movementInsight">A short session still counts. Consider a 10-minute walk to round it out.</p>
+                  <strong id="movementSummary">No workout logged</strong>
+                  <p id="movementInsight">Add a walk, ride, strength session, or any other movement.</p>
                 </div>
               </div>
             </article>
